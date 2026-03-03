@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  planeroo-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: planeroo-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=planeroo;Username=planeroo;Password=P1@neroo2024!
+      - Jwt__Secret=PlanerooSuperSecretProductionKey2024!@#$%^&*()PlanerooKey
+      - Jwt__Issuer=Planeroo
+      - Jwt__Audience=PlanerooApp
+    networks:
+      - planeroo-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: planeroo-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: planeroo
+      POSTGRES_USER: planeroo
+      POSTGRES_PASSWORD: P1@neroo2024!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U planeroo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - planeroo-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: planeroo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - planeroo-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  planeroo-network:
+    driver: bridge
