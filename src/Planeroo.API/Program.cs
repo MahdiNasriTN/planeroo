@@ -105,15 +105,13 @@ app.UseCors("PlanerooPolicy");
 
 app.UseMiddleware<ExceptionMiddleware>();
 
-if (app.Environment.IsDevelopment())
+// Swagger enabled in all environments (protected by the /swagger route)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Planeroo API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Planeroo API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseSerilogRequestLogging();
 
