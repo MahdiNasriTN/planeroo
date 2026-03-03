@@ -48,6 +48,7 @@ docker-compose.override.yml
 *.pem
 *.key
 *.pfx
+appsettings.Production.json
 *.p12
 
 # ── Logs ──
