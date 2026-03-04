@@ -55,53 +55,68 @@ public class OcrService : IOcrService
                 "Tu es un système OCR intelligent spécialisé dans l'extraction de devoirs ET d'examens scolaires. " +
                 "Tu sais lire aussi bien des photos d'agenda que des emplois du temps d'examens, des tableaux de contrôles, " +
                 "ou tout document scolaire listant des matières avec des dates. " +
+                "IMPORTANT : tu dois TOUJOURS extraire TOUTES les entrées visibles dans l'image, sans en omettre aucune. " +
                 "Retourne uniquement du JSON valide, sans explications ni balises markdown.";
 
             var userPrompt = $@"Date d'aujourd'hui : {today}
 
 Analyse cette image scolaire. Elle peut être :
 - Un agenda avec des devoirs écrits
-- Un emploi du temps d'examen (tableau avec jours + matières)
+- Un emploi du temps d'examen ou de contrôle (tableau EMPLOI D'EXAMEN / EMPLOI DE CONTROLE)
 - Un calendrier de contrôles/tests
 - Toute autre source listant des matières à préparer
 
-Pour chaque devoir OU examen/épreuve visible, crée une entrée.
-Pour un examen, le titre sera ""Révision [matière]"" et estimatedMinutes sera 90 ou 120.
+RÈGLES IMPORTANTES :
+1. Si tu vois un tableau d'examens/contrôles (type EMPLOI D'EXAMEN), chaque cellule = une entrée séparée.
+   Parcours TOUTES les lignes et TOUTES les colonnes du tableau.
+2. Pour chaque examen/contrôle, titre = ""Révision [matière]"", estimatedMinutes = 90 ou 120.
+3. Ne jamais retourner tasks:[] si tu vois du texte scolaire dans l'image.
+4. Si tu n'es pas sûr de la matière, utilise ""Other"".
 
-Correspondance des matières vers les valeurs autorisées :
-- Mathématiques / Math → Mathematics
-- Français / Rédaction → French  
-- Anglais / English → English
-- Sciences / Physique / Chimie / SVT / Biologie → Science
-- Histoire / Géographie / Histoire-Géographie → History
-- Informatique / Info → Technology
-- Art / Dessin → Art
-- Musique → Music
+Correspondance des matières :
+- Mathématiques / Math / Maths → Mathematics
+- Français / Rédaction / Expression → French
+- Anglais / English / Langue étrangère → English
+- Sciences / Physique / Chimie / SVT / Biologie / Science de la vie → Science
+- Histoire / Géographie / Histoire-Géo → History
+- Informatique / Info / TIC → Technology
+- Art / Dessin / Arts plastiques → Art
+- Musique / Éducation musicale → Music
 - Technologie → Technology
-- Arabe / Education Civique / Autre → Other
+- Arabe / Arab / اللغة العربية → Other
+- EPS / Sport → Other
+- Éducation Civique / Civique → Other
+- Tout le reste → Other
 
-Pour les jours de la semaine sans date précise (Lundi, Mardi...) :
+Pour les jours de la semaine sans date précise (Lundi/Monday, Mardi/Tuesday...) :
 - Calcule la date réelle à partir d'aujourd'hui ({today})
-- Si le jour est déjà passé cette semaine, prends le même jour la semaine prochaine
+- Si le jour est déjà passé cette semaine, prends le même jour la semaine PROCHAINE
 
-Retourne un objet JSON avec la structure exacte :
+Retourne un objet JSON avec exactement cette structure :
 {{
   ""rawText"": ""texte brut extrait de l'image"",
   ""tasks"": [
     {{
-      ""title"": ""titre du devoir ou 'Révision Mathématiques'"",
-      ""description"": ""détails optionnels ou null"",
-      ""subject"": ""Mathematics|French|English|Science|History|Geography|Art|Music|Technology|Other"",
-      ""dueDate"": ""YYYY-MM-DD ou null"",
-      ""estimatedMinutes"": 30,
+      ""title"": ""Révision Mathématiques"",
+      ""description"": null,
+      ""subject"": ""Mathematics"",
+      ""dueDate"": ""YYYY-MM-DD"",
+      ""estimatedMinutes"": 90,
       ""confidence"": 0.95
     }}
   ]
 }}
-Si aucun contenu scolaire n'est détecté, retourne {{""rawText"": """", ""tasks"": []}}.";
+Si et seulement si l'image ne contient AUCUN contenu scolaire, retourne {{""rawText"": """", ""tasks"": []}}.";
 
 
-            var rawContent = await _llm.VisionAsync(systemPrompt, userPrompt, imageBytes, mimeType, 1500, ct);
+            _logger.LogInformation("[OCR] Calling {Provider} VisionAsync for child {ChildId}, file={File}, size={Size}bytes",
+                _llm.ProviderName, childId, fileName, imageBytes.Length);
+
+            var rawContent = await _llm.VisionAsync(systemPrompt, userPrompt, imageBytes, mimeType, 3000, ct);
+
+            _logger.LogDebug("[OCR] Raw LLM response ({Length} chars): {Preview}",
+                rawContent?.Length ?? 0,
+                rawContent?[..Math.Min(500, rawContent.Length)] ?? "<null>");
 
             if (rawContent is null)
             {
@@ -148,6 +163,12 @@ Si aucun contenu scolaire n'est détecté, retourne {{""rawText"": """", ""tasks
             session.DetectedTasksCount = tasks.Count;
             session.ConfidenceScore    = tasks.Count > 0 ? tasks.Average(t => t.Confidence) : 0;
             session.ProcessedAt        = DateTime.UtcNow;
+
+            _logger.LogInformation("[OCR] Detected {Count} tasks for child {ChildId}", tasks.Count, childId);
+
+            if (tasks.Count == 0 && rawText.Length > 10)
+                _logger.LogWarning("[OCR] Zero tasks but rawText is non-empty ({RawLen} chars). LLM may not have recognized the document type. RawText start: {Start}",
+                    rawText.Length, rawText[..Math.Min(200, rawText.Length)]);
             await _sessions.UpdateAsync(session, ct);
             await _unitOfWork.SaveChangesAsync(ct);
 
