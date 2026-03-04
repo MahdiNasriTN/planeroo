@@ -31,6 +31,7 @@ public class PlanningController : ControllerBase
         [FromQuery] string mode = "smart",
         [FromQuery] int weekNumber = 0,
         [FromQuery] int year = 0,
+        [FromQuery] string source = "devoirs",
         CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
@@ -43,7 +44,8 @@ public class PlanningController : ControllerBase
             Year:            resolvedYear,
             AvailableSlots:  null,
             AutoBalance:     true,
-            Mode:            mode
+            Mode:            mode,
+            Source:          source
         );
 
         var result = await _planningEngine.GenerateWeeklyPlanAsync(request, ct);

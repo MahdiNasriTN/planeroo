@@ -36,6 +36,7 @@ public class Child : BaseEntity
     public ICollection<AIInteraction> AIInteractions { get; set; } = new List<AIInteraction>();
     public ICollection<ScanSession> ScanSessions { get; set; } = new List<ScanSession>();
     public ICollection<StudySheet> StudySheets { get; set; } = new List<StudySheet>();
+    public ChildTimetable? Timetable { get; set; }
 
     // Computed
     public int Age => DateTime.UtcNow.Year - DateOfBirth.Year -

@@ -12,6 +12,8 @@ namespace Planeroo.Infrastructure.Services;
 public class PlanningEngine : IPlanningEngine
 {
     private readonly IRepository<Homework> _homeworks;
+    private readonly IRepository<ChildTimetable> _timetables;
+    private readonly IRepository<TimetableEntry> _timetableEntries;
     private readonly ILogger<PlanningEngine> _logger;
 
     // Default study windows per day (after school until evening)
@@ -19,10 +21,16 @@ public class PlanningEngine : IPlanningEngine
     private static readonly TimeSpan DefaultStudyEnd   = new(20, 0, 0); // 20:00  (240 min → fits 2×90 min tasks)
     private const int BreakBetweenTasksMinutes = 10;
 
-    public PlanningEngine(IRepository<Homework> homeworks, ILogger<PlanningEngine> logger)
+    public PlanningEngine(
+        IRepository<Homework> homeworks,
+        IRepository<ChildTimetable> timetables,
+        IRepository<TimetableEntry> timetableEntries,
+        ILogger<PlanningEngine> logger)
     {
-        _homeworks = homeworks;
-        _logger = logger;
+        _homeworks        = homeworks;
+        _timetables       = timetables;
+        _timetableEntries = timetableEntries;
+        _logger           = logger;
     }
 
     public async Task<Result<WeeklyPlanningDto>> GenerateWeeklyPlanAsync(
@@ -30,19 +38,71 @@ public class PlanningEngine : IPlanningEngine
     {
         try
         {
-            // Fetch and filter pending homeworks for this child
-            var allHomeworks = await _homeworks.GetAllAsync(ct);
-            var pending = allHomeworks
-                .Where(h => h.ChildId == request.ChildId
-                         && !h.IsDeleted
-                         && h.Status is HomeworkStatus.Pending or HomeworkStatus.InProgress)
-                .OrderBy(h => h.DueDate)
-                .ThenByDescending(h => (int)h.Priority)
-                .ToList();
+            List<Homework> pending;
+            List<Homework> completed;
 
-            var completed = allHomeworks
-                .Where(h => h.ChildId == request.ChildId && !h.IsDeleted && h.Status == HomeworkStatus.Completed)
-                .ToList();
+            if (request.Source.Equals("timetable", StringComparison.OrdinalIgnoreCase))
+            {
+                // ── TIMETABLE SOURCE: build synthetic Homework objects from saved timetable ──
+                var allTimetables = await _timetables.GetAllAsync(ct);
+                var timetable = allTimetables.FirstOrDefault(t => t.ChildId == request.ChildId && !t.IsDeleted);
+
+                if (timetable is null)
+                {
+                    _logger.LogWarning("[Planning] No timetable found for child {ChildId}", request.ChildId);
+                    // Return empty plan gracefully
+                    pending  = new List<Homework>();
+                    completed = new List<Homework>();
+                }
+                else
+                {
+                    var allEntries = await _timetableEntries.GetAllAsync(ct);
+                    var entries = allEntries
+                        .Where(e => e.TimetableId == timetable.Id && !e.IsDeleted)
+                        .ToList();
+
+                    // One synthetic Homework per unique subject
+                    pending = entries
+                        .GroupBy(e => e.Subject)
+                        .Select(g =>
+                        {
+                            var first = g.First();
+                            if (!Enum.TryParse<SubjectType>(first.Subject, out var subjectEnum))
+                                subjectEnum = SubjectType.Other;
+
+                            return new Homework
+                            {
+                                Id               = Guid.NewGuid(),
+                                ChildId          = request.ChildId,
+                                Title            = $"Révision {first.SubjectDisplayName}",
+                                Subject          = subjectEnum,
+                                Status           = HomeworkStatus.Pending,
+                                Priority         = HomeworkPriority.Medium,
+                                EstimatedMinutes = 90,
+                                DueDate          = DateTime.UtcNow.AddDays(7)
+                            };
+                        })
+                        .ToList();
+
+                    completed = new List<Homework>();
+                }
+            }
+            else
+            {
+                // ── DEVOIRS SOURCE (default): fetch real pending homeworks ──
+                var allHomeworks = await _homeworks.GetAllAsync(ct);
+                pending = allHomeworks
+                    .Where(h => h.ChildId == request.ChildId
+                             && !h.IsDeleted
+                             && h.Status is HomeworkStatus.Pending or HomeworkStatus.InProgress)
+                    .OrderBy(h => h.DueDate)
+                    .ThenByDescending(h => (int)h.Priority)
+                    .ToList();
+
+                completed = allHomeworks
+                    .Where(h => h.ChildId == request.ChildId && !h.IsDeleted && h.Status == HomeworkStatus.Completed)
+                    .ToList();
+            }
 
             // Compute week start (Monday) — fall back to current week if caller sent 0
             var resolvedYear   = request.Year       > 0 ? request.Year       : ISOWeek.GetYear(DateTime.UtcNow);

@@ -199,3 +199,32 @@ CREATE TABLE IF NOT EXISTS study_sheets (
 );
 
 CREATE INDEX idx_study_sheets_child ON study_sheets(child_id);
+
+-- ── Child Timetables ──
+CREATE TABLE IF NOT EXISTS child_timetables (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    UNIQUE(child_id)
+);
+
+CREATE INDEX idx_child_timetables_child ON child_timetables(child_id);
+
+-- ── Timetable Entries ──
+CREATE TABLE IF NOT EXISTS timetable_entries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    timetable_id UUID NOT NULL REFERENCES child_timetables(id) ON DELETE CASCADE,
+    day_of_week VARCHAR(20) NOT NULL,
+    start_time VARCHAR(10) NOT NULL,
+    end_time VARCHAR(10) NOT NULL,
+    subject VARCHAR(100) NOT NULL,
+    subject_display_name VARCHAR(100) NOT NULL,
+    period VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE,
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+CREATE INDEX idx_timetable_entries_timetable ON timetable_entries(timetable_id);

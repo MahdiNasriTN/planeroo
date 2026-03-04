@@ -1,7 +1,17 @@
 using Planeroo.Application.DTOs.AI;
+using Planeroo.Application.DTOs.Timetable;
 using Planeroo.Domain.Common;
 
 namespace Planeroo.Application.Interfaces;
+
+public interface ITimetableService
+{
+    Task<Result<ScanTimetableResultDto>> ScanTimetableAsync(Guid childId, Stream imageStream, string fileName, CancellationToken ct = default);
+    Task<Result<TimetableDto>> ConfirmTimetableAsync(ConfirmTimetableRequest request, CancellationToken ct = default);
+    Task<Result<TimetableDto?>> GetTimetableAsync(Guid childId, CancellationToken ct = default);
+    Task<Result<TimetableEntryDto>> UpdateEntryAsync(Guid entryId, ScannedTimetableEntryDto dto, CancellationToken ct = default);
+    Task<Result<bool>> DeleteEntryAsync(Guid entryId, CancellationToken ct = default);
+}
 
 public interface IOcrService
 {

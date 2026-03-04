@@ -8,7 +8,8 @@ public record GeneratePlanningRequest(
     int Year,
     List<AvailabilitySlot>? AvailableSlots,
     bool AutoBalance = true,
-    string Mode = "quick"
+    string Mode = "quick",
+    string Source = "devoirs"  // "devoirs" | "timetable"
 )
 {
     // Allow callers to omit WeekNumber/Year — default to the current ISO week

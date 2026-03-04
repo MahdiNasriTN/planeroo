@@ -19,6 +19,8 @@ public class PlanerooDbContext : DbContext
     public DbSet<AIInteraction> AIInteractions => Set<AIInteraction>();
     public DbSet<ScanSession> ScanSessions => Set<ScanSession>();
     public DbSet<StudySheet> StudySheets => Set<StudySheet>();
+    public DbSet<ChildTimetable> ChildTimetables => Set<ChildTimetable>();
+    public DbSet<TimetableEntry> TimetableEntries => Set<TimetableEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -205,6 +207,41 @@ public class PlanerooDbContext : DbContext
             e.HasOne(x => x.Child)
              .WithMany(c => c.StudySheets)
              .HasForeignKey(x => x.ChildId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasQueryFilter(x => !x.IsDeleted);
+        });
+
+        // ── Child Timetable ──
+        modelBuilder.Entity<ChildTimetable>(e =>
+        {
+            e.ToTable("child_timetables");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.ChildId).IsUnique();
+
+            e.HasOne(x => x.Child)
+             .WithOne(c => c.Timetable)
+             .HasForeignKey<ChildTimetable>(x => x.ChildId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasQueryFilter(x => !x.IsDeleted);
+        });
+
+        // ── Timetable Entry ──
+        modelBuilder.Entity<TimetableEntry>(e =>
+        {
+            e.ToTable("timetable_entries");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DayOfWeek).HasMaxLength(20).IsRequired();
+            e.Property(x => x.StartTime).HasMaxLength(10).IsRequired();
+            e.Property(x => x.EndTime).HasMaxLength(10).IsRequired();
+            e.Property(x => x.Subject).HasMaxLength(100).IsRequired();
+            e.Property(x => x.SubjectDisplayName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Period).HasMaxLength(20);
+
+            e.HasOne(x => x.Timetable)
+             .WithMany(t => t.Entries)
+             .HasForeignKey(x => x.TimetableId)
              .OnDelete(DeleteBehavior.Cascade);
 
             e.HasQueryFilter(x => !x.IsDeleted);

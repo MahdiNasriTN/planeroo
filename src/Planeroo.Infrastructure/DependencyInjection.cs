@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<IOcrService, OcrService>();
         services.AddScoped<IAIService, AIService>();
         services.AddScoped<IPlanningEngine, PlanningEngine>();
+        services.AddScoped<ITimetableService, TimetableService>();
 
         // JWT Authentication
         var jwtSecret = configuration["Jwt:Secret"] ?? "PlanerooSuperSecretKey2024!@#$%^&*()PlanerooKey";
