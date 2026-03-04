@@ -14,9 +14,9 @@ public class PlanningEngine : IPlanningEngine
     private readonly IRepository<Homework> _homeworks;
     private readonly ILogger<PlanningEngine> _logger;
 
-    // Default study windows per day (school schedule: after school until dinner)
+    // Default study windows per day (after school until evening)
     private static readonly TimeSpan DefaultStudyStart = new(16, 0, 0); // 16:00
-    private static readonly TimeSpan DefaultStudyEnd   = new(18, 30, 0); // 18:30
+    private static readonly TimeSpan DefaultStudyEnd   = new(20, 0, 0); // 20:00  (240 min → fits 2×90 min tasks)
     private const int BreakBetweenTasksMinutes = 10;
 
     public PlanningEngine(IRepository<Homework> homeworks, ILogger<PlanningEngine> logger)
