@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS parents (
     notify_by_email BOOLEAN DEFAULT TRUE,
     notify_by_push BOOLEAN DEFAULT TRUE,
     weekly_report_enabled BOOLEAN DEFAULT TRUE,
+    parent_lock_pin VARCHAR(10),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE,
     is_deleted BOOLEAN DEFAULT FALSE

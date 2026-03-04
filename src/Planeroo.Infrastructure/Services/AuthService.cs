@@ -69,7 +69,7 @@ public class AuthService : IAuthService
 
         var profile = new UserProfileDto(
             parent.Id, parent.Email, parent.FirstName, parent.LastName,
-            parent.AvatarUrl, "Parent", new List<ChildSummaryDto>()
+            parent.AvatarUrl, "Parent", new List<ChildSummaryDto>(), parent.ParentLockPin
         );
 
         return Result<AuthResponse>.Success(new AuthResponse(accessToken, refreshToken, expiresAt, profile));
@@ -96,7 +96,7 @@ public class AuthService : IAuthService
 
         var profile = new UserProfileDto(
             parent.Id, parent.Email, parent.FirstName, parent.LastName,
-            parent.AvatarUrl, "Parent", null
+            parent.AvatarUrl, "Parent", null, parent.ParentLockPin
         );
 
         return Result<AuthResponse>.Success(new AuthResponse(accessToken, refreshToken, expiresAt, profile));
@@ -171,7 +171,7 @@ public class AuthService : IAuthService
 
         var profile = new UserProfileDto(
             parent.Id, parent.Email, parent.FirstName, parent.LastName,
-            parent.AvatarUrl, "Parent", null
+            parent.AvatarUrl, "Parent", null, parent.ParentLockPin
         );
 
         return Result<AuthResponse>.Success(new AuthResponse(accessToken, newRefreshToken, expiresAt, profile));
@@ -225,7 +225,7 @@ public class AuthService : IAuthService
 
             var parentProfile = new UserProfileDto(
                 parent.Id, parent.Email, parent.FirstName, parent.LastName,
-                parent.AvatarUrl, "Parent", children
+                parent.AvatarUrl, "Parent", children, parent.ParentLockPin
             );
 
             return Result<UserProfileDto>.Success(parentProfile);
@@ -242,6 +242,21 @@ public class AuthService : IAuthService
         );
 
         return Result<UserProfileDto>.Success(childProfile);
+    }
+
+    public async Task<Result> SetParentLockPinAsync(Guid parentId, string? pin, CancellationToken ct = default)
+    {
+        var parent = await _parentRepo.GetByIdAsync(parentId, ct);
+        if (parent is null)
+            return Result.Failure("Parent not found", 404);
+
+        parent.ParentLockPin = string.IsNullOrWhiteSpace(pin) ? null : pin;
+        parent.UpdatedAt = DateTime.UtcNow;
+
+        await _parentRepo.UpdateAsync(parent, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        return Result.Success();
     }
 
     public Task<Result> VerifyEmailAsync(string token, CancellationToken ct = default)

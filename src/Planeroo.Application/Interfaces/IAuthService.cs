@@ -14,4 +14,5 @@ public interface IAuthService
     Task<Result> ChangePasswordAsync(Guid parentId, ChangePasswordRequest request, CancellationToken ct = default);
     Task<Result> LogoutAsync(Guid userId, CancellationToken ct = default);
     Task<Result> VerifyEmailAsync(string token, CancellationToken ct = default);
+    Task<Result> SetParentLockPinAsync(Guid parentId, string? pin, CancellationToken ct = default);
 }

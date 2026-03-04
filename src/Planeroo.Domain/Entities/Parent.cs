@@ -26,6 +26,9 @@ public class Parent : BaseEntity
     public DateTime? TermsAcceptedAt { get; set; }
     public bool DataProcessingConsent { get; set; } = false;
 
+    // Parental lock PIN (protects parent space from children)
+    public string? ParentLockPin { get; set; }
+
     // Notification preferences
     public bool NotifyByEmail { get; set; } = true;
     public bool NotifyByPush { get; set; } = true;

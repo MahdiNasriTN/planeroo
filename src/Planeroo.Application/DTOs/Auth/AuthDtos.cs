@@ -44,7 +44,12 @@ public record UserProfileDto(
     string LastName,
     string? AvatarUrl,
     string Role,
-    List<ChildSummaryDto>? Children
+    List<ChildSummaryDto>? Children,
+    string? ParentLockPin = null
+);
+
+public record SetParentLockPinRequest(
+    string? Pin
 );
 
 public record ChildSummaryDto(

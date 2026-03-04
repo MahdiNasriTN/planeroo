@@ -127,6 +127,23 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Set or clear the parent lock PIN (protects parent space from children).
+    /// </summary>
+    [HttpPut("parent-lock-pin")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "ParentOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetParentLockPin([FromBody] SetParentLockPinRequest request, CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _authService.SetParentLockPinAsync(userId, request.Pin, ct);
+        if (!result.IsSuccess)
+            return StatusCode(result.StatusCode, new { message = result.Error });
+
+        return Ok(new { message = "Parent lock PIN updated" });
+    }
+
+    /// <summary>
     /// Logout (invalidates refresh token).
     /// </summary>
     [HttpPost("logout")]
