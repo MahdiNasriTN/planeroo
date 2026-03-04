@@ -77,21 +77,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("PlanerooPolicy", policy =>
     {
-        if (builder.Environment.IsDevelopment())
-        {
-            policy.AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader();
-        }
-        else
-        {
-            policy.WithOrigins(
-                    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ??
-                    new[] { "http://localhost:3000", "http://localhost:8080" })
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
-        }
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
