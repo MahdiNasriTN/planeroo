@@ -49,26 +49,57 @@ public class OcrService : IOcrService
             var imageBytes = ms.ToArray();
             var mimeType   = GetMimeType(fileName);
 
-            const string systemPrompt =
-                "Tu es un système OCR spécialisé dans l'extraction de devoirs scolaires depuis des photos d'agenda. " +
-                "Retourne uniquement du JSON valide, sans explications.";
+            var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
 
-            const string userPrompt = @"Extrais tous les devoirs visibles dans cette image d'agenda scolaire.
-Retourne un objet JSON avec la structure exacte suivante :
-{
+            const string systemPrompt =
+                "Tu es un système OCR intelligent spécialisé dans l'extraction de devoirs ET d'examens scolaires. " +
+                "Tu sais lire aussi bien des photos d'agenda que des emplois du temps d'examens, des tableaux de contrôles, " +
+                "ou tout document scolaire listant des matières avec des dates. " +
+                "Retourne uniquement du JSON valide, sans explications ni balises markdown.";
+
+            var userPrompt = $@"Date d'aujourd'hui : {today}
+
+Analyse cette image scolaire. Elle peut être :
+- Un agenda avec des devoirs écrits
+- Un emploi du temps d'examen (tableau avec jours + matières)
+- Un calendrier de contrôles/tests
+- Toute autre source listant des matières à préparer
+
+Pour chaque devoir OU examen/épreuve visible, crée une entrée.
+Pour un examen, le titre sera ""Révision [matière]"" et estimatedMinutes sera 90 ou 120.
+
+Correspondance des matières vers les valeurs autorisées :
+- Mathématiques / Math → Mathematics
+- Français / Rédaction → French  
+- Anglais / English → English
+- Sciences / Physique / Chimie / SVT / Biologie → Science
+- Histoire / Géographie / Histoire-Géographie → History
+- Informatique / Info → Technology
+- Art / Dessin → Art
+- Musique → Music
+- Technologie → Technology
+- Arabe / Education Civique / Autre → Other
+
+Pour les jours de la semaine sans date précise (Lundi, Mardi...) :
+- Calcule la date réelle à partir d'aujourd'hui ({today})
+- Si le jour est déjà passé cette semaine, prends le même jour la semaine prochaine
+
+Retourne un objet JSON avec la structure exacte :
+{{
   ""rawText"": ""texte brut extrait de l'image"",
   ""tasks"": [
-    {
-      ""title"": ""titre court du devoir"",
+    {{
+      ""title"": ""titre du devoir ou 'Révision Mathématiques'"",
       ""description"": ""détails optionnels ou null"",
       ""subject"": ""Mathematics|French|English|Science|History|Geography|Art|Music|Technology|Other"",
-      ""dueDate"": ""YYYY-MM-DD ou null si non visible"",
+      ""dueDate"": ""YYYY-MM-DD ou null"",
       ""estimatedMinutes"": 30,
       ""confidence"": 0.95
-    }
+    }}
   ]
-}
-Si aucun devoir n'est détecté, retourne {""rawText"": """", ""tasks"": []}.";
+}}
+Si aucun contenu scolaire n'est détecté, retourne {{""rawText"": """", ""tasks"": []}}.";
+
 
             var rawContent = await _llm.VisionAsync(systemPrompt, userPrompt, imageBytes, mimeType, 1500, ct);
 
