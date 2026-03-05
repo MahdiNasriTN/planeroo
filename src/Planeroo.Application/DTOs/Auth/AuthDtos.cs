@@ -17,8 +17,7 @@ public record LoginRequest(
 );
 
 public record ChildLoginRequest(
-    Guid ChildId,
-    string Pin
+    Guid ChildId
 );
 
 public record ChildLoginByPinRequest(
