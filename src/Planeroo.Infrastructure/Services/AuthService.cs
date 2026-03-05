@@ -108,9 +108,6 @@ public class AuthService : IAuthService
         if (child is null)
             return Result<AuthResponse>.Failure("Child not found", 404);
 
-        if (child.Pin != request.Pin)
-            return Result<AuthResponse>.Failure("Invalid PIN", 401);
-
         var (accessToken, expiresAt) = GenerateJwtToken(child.Id, child.FirstName, "Child");
         var refreshToken = GenerateRefreshToken();
 
