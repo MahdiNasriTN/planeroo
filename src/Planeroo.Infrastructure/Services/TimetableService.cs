@@ -45,47 +45,62 @@ public class TimetableService : ITimetableService
             var mimeType   = GetMimeType(fileName);
 
             const string systemPrompt =
-                "Tu es un système OCR spécialisé dans la lecture des emplois du temps scolaires hebdomadaires. " +
-                "Tu extrais les matières, jours et horaires d'un emploi du temps. " +
-                "Retourne uniquement du JSON valide, sans explications ni balises markdown.";
+                "You are a specialized OCR system for reading school weekly timetables (emplois du temps). " +
+                "You extract subjects, days and time slots from timetable images, including Arabic timetables. " +
+                "Return ONLY valid JSON with no markdown, no explanations, no code blocks.";
 
-            const string userPrompt = @"Analyse cet emploi du temps scolaire.
-Extrais chaque créneau avec son jour, ses horaires et sa matière.
+            const string userPrompt = @"Analyze this school timetable image.
+Extract each class slot with its day, time, and subject.
 
-Correspondance des matières (normalise en anglais) :
-- Mathématiques / Math / Maths → Mathematics
-- Français / Rédaction / Expression → French
-- Anglais / English → English
-- Sciences / Physique / Chimie / SVT / Biologie → Science
-- Histoire / Géographie / Histoire-Géo → History
-- Informatique / Info / TIC → Technology
-- Art / Dessin / Arts plastiques → Art
-- Musique / Éducation musicale → Music
-- Technologie → Technology
-- EPS / Sport → Sport
-- Arabe / اللغة العربية → Arabic
-- Tout le reste → Other
+IMPORTANT — SKIP breaks/recess: any cell containing فسحة, استراحة, Break, Recess, Pause must be OMITTED from entries.
 
-Pour les jours, utilise les noms anglais : Monday, Tuesday, Wednesday, Thursday, Friday, Saturday.
-Pour la période : Morning (avant 12h), Afternoon (après 12h).
+Subject mapping (normalize to English key + keep original display name):
+Arabic subjects:
+- عربية / لغة عربية / اللغة العربية → subject: ""Arabic"", subjectDisplayName: ""عربية""
+- رياضيات / رياضة → subject: ""Mathematics"", subjectDisplayName: ""رياضيات""
+- فرنسية / لغة فرنسية → subject: ""French"", subjectDisplayName: ""فرنسية""
+- إنقليزية / إنجليزية / لغة إنجليزية → subject: ""English"", subjectDisplayName: ""إنقليزية""
+- علوم فيزيائية / فيزيائية / فيزياء / كيمياء → subject: ""Physics"", subjectDisplayName: ""علوم فيزيائية""
+- علوم الحياة والأرض / علوم طبيعية / أحياء / بيولوجيا → subject: ""Biology"", subjectDisplayName: ""علوم الحياة والأرض""
+- علوم / العلوم → subject: ""Science"", subjectDisplayName: ""علوم""
+- تاريخ وجغرافيا / تاريخ / جغرافيا → subject: ""History"", subjectDisplayName: ""تاريخ وجغرافيا""
+- تكنولوجيا / تكنولوجيا المعلومات → subject: ""Technology"", subjectDisplayName: ""تكنولوجيا""
+- إعلامية / إعلام آلي / معلوماتية → subject: ""Technology"", subjectDisplayName: ""إعلامية""
+- تربية مدنية / تربية وطنية → subject: ""Civic"", subjectDisplayName: ""تربية مدنية""
+- تربية بدنية / EPS / رياضة بدنية → subject: ""Sport"", subjectDisplayName: ""تربية بدنية""
+- تربية فنية / رسم / فنون → subject: ""Art"", subjectDisplayName: ""تربية فنية""
+- موسيقى / تربية موسيقية → subject: ""Music"", subjectDisplayName: ""موسيقى""
+- فلسفة → subject: ""Philosophy"", subjectDisplayName: ""فلسفة""
+French/other subjects:
+- Mathématiques / Maths → subject: ""Mathematics"", subjectDisplayName: ""Mathématiques""
+- Français → subject: ""French"", subjectDisplayName: ""Français""
+- Anglais → subject: ""English"", subjectDisplayName: ""Anglais""
+- Sciences / SVT / Physique-Chimie → subject: ""Science"", subjectDisplayName: use exact text
+- Histoire-Géographie / Histoire / Géographie → subject: ""History"", subjectDisplayName: use exact text
+- Informatique / TIC → subject: ""Technology"", subjectDisplayName: use exact text
+- Anything else → subject: ""Other"", subjectDisplayName: use exact text from image
 
-FORMAT DE SORTIE :
+For days use English: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday.
+For period: Morning (before 12:00), Afternoon (12:00 and after).
+For subjectDisplayName: use the EXACT text as it appears in the image cell.
+
+OUTPUT FORMAT (JSON only, no markdown):
 {
-  ""rawText"": ""texte brut extrait"",
+  ""rawText"": ""full text extracted from image"",
   ""entries"": [
     {
       ""dayOfWeek"": ""Monday"",
       ""startTime"": ""08:00"",
-      ""endTime"": ""09:30"",
-      ""subject"": ""Mathematics"",
-      ""subjectDisplayName"": ""Mathématiques"",
+      ""endTime"": ""09:00"",
+      ""subject"": ""Arabic"",
+      ""subjectDisplayName"": ""عربية"",
       ""period"": ""Morning"",
       ""confidence"": 0.95
     }
   ],
   ""confidenceScore"": 0.90
 }
-Si l'image ne contient pas d'emploi du temps, retourne { ""rawText"": """", ""entries"": [], ""confidenceScore"": 0 }.";
+If the image does not contain a timetable, return { ""rawText"": """", ""entries"": [], ""confidenceScore"": 0 }.";
 
             _logger.LogInformation("[TimetableScan] Calling vision for child {ChildId}, file={File}", childId, fileName);
 
