@@ -75,6 +75,7 @@ public class OpenAiLlmClient : ILlmClient
             };
 
             using var client  = _http.CreateClient();
+            client.Timeout = TimeSpan.FromMinutes(3);
             using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
             {
                 Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")

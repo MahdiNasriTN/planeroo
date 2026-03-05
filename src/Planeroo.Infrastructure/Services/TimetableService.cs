@@ -104,7 +104,10 @@ If the image does not contain a timetable, return { ""rawText"": """", ""entries
 
             _logger.LogInformation("[TimetableScan] Calling vision for child {ChildId}, file={File}", childId, fileName);
 
-            var rawContent = await _llm.VisionAsync(systemPrompt, userPrompt, imageBytes, mimeType, 3000, ct);
+            // Use an independent 3-minute timeout — the HTTP request CT is only ~30s
+            using var llmCts = CancellationTokenSource.CreateLinkedTokenSource(
+                new CancellationTokenSource(TimeSpan.FromMinutes(3)).Token);
+            var rawContent = await _llm.VisionAsync(systemPrompt, userPrompt, imageBytes, mimeType, 3000, llmCts.Token);
 
             _logger.LogDebug("[TimetableScan] Raw response ({Len} chars): {Preview}",
                 rawContent?.Length ?? 0, rawContent?[..Math.Min(500, rawContent?.Length ?? 0)] ?? "<null>");
